@@ -1,113 +1,58 @@
-import 'antd/dist/reset.css';
-import React, { useState } from "react";
-import { NavigateFunction, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Checkbox, Modal} from 'antd';
-import { LoginOutlined, UserOutlined, LockOutlined } from '@ant-design/icons';
-import { login } from "../services/auth.service";
+// src/components/Login.tsx
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Form, Input, Button, message } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { login } from '../services/auth.service';
 
-  const Login: React.FC = () => {
-    let navigate: NavigateFunction = useNavigate();
-    const [loading, setLoading] = useState<boolean>(false);
-    const [message, setMessage] = useState<string>("");
-    const [isShow, setIsShow] = React.useState(false); 
-    const onFinish = (values:any) => {
-    const { username, password } =values;
+interface LoginValues {
+  username: string;
+  password: string;
+}
 
- 
-      
-    setMessage("");
-    setLoading(true);
+const Login: React.FC = () => {
+  const navigate = useNavigate();
 
-    login(username, password).then(
-      () => {
-        if(localStorage.getItem("user"))
-          navigate("/profile");
-        window.location.reload();
-      })
-      .catch( 
-       (error)  => {
-
-        const resMessage =
-          (error.response &&
-            error.response.data &&
-            error.response.data.message) ||
-          error.message ||
-          error.toString();
-        window.alert(`Sorry ${username} you may not have account in our system yet! pls try again or register first`)
-        console.log(error.toString());     
-        setLoading(false);
-        setMessage(resMessage);
-         navigate("/");
-         window.location.reload();
-
-      }
-
-    )
-
+  const handleLogin = async (values: LoginValues) => {
+    const { username, password } = values;
+    try {
+      await login(username, password);
+      message.success(`Welcome back, ${username}!`);
+      window.location.reload();
+      navigate('/');
+    } catch (error: any) {
+      message.error(`Login failed: ${error?.response?.data?.error || 'Please try again.'}`);
     }
+  };
 
   return (
-    <>
-      <Button icon={<LoginOutlined />} onClick={()=>{setIsShow(true)}} />
-      <Modal open={isShow} onCancel={()=>{setIsShow(false)}} title="Welcome to Hotel Agent" footer={[]}> 
-    <Form style={{margin: "5px"}} 
-      name="normal_login"
-      layout="vertical"
-      wrapperCol={{span:10}}
-  className="login-form"
-      initialValues={{
-        remember: true,
-      }}
-      onFinish={onFinish}
-    >
-      <Form.Item
-        name="username"
-        label="Username"
-        rules={[
-          {
-            required: true,
-            message: 'Please input your Username!',
-          },
-        ]}
-      >
-        <Input prefix={<UserOutlined className="site-form-item-icon" />} placeholder="Username" />
-      </Form.Item>
-      <Form.Item
-        name="password"
-        label="Password"
-        rules={[
-          {
-            required: true,
-            message: 'Please input your Password!',
-          },
-        ]}
-      >
-        <Input.Password
-          prefix={<LockOutlined className="site-form-item-icon" />}
-          type="password"
-          placeholder="Password"
-        />
-      </Form.Item>
-      <Form.Item>
-        <Form.Item name="remember" valuePropName="checked" noStyle>
-          <Checkbox>Remember me</Checkbox>
+    <div style={{ maxWidth: 400, margin: '0 auto' }}>
+      <h3 style={{ textAlign: 'center' }}>
+        <strong>Login</strong>
+      </h3>
+      <Form layout="vertical" name="login" onFinish={handleLogin}>
+        <Form.Item
+          name="username"
+          label="Username"
+          rules={[{ required: true, message: 'Please input your username!' }]}
+        >
+          <Input prefix={<UserOutlined />} placeholder="Username" />
         </Form.Item>
-
-        <a className="login-form-forgot" href="">
-          Forgot password
-        </a>
-      </Form.Item>
-
-      <Form.Item>
-        <Button type="primary" htmlType="submit" className="login-form-button">
-          Log in
-        </Button><a href="/register"> Or register now!</a>
-      </Form.Item>
-    </Form>
-        </Modal>
-    </>  
+        <Form.Item
+          name="password"
+          label="Password"
+          rules={[{ required: true, message: 'Please input your password!' }]}
+        >
+          <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" block>
+            Login
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
   );
 };
-
 
 export default Login;

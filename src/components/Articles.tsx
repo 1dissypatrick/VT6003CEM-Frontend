@@ -6,13 +6,10 @@ import { Card, Col, Row, Spin } from 'antd';
 import { api } from './common/http-common';
 import axios from 'axios';
 import {LoadingOutlined} from '@ant-design/icons';
-import PostIcon from './posticon';
-import Displaycomment from './comments';
 import { useDebounce } from 'use-debounce';
 import { Input } from 'antd';
 
 const { Search } = Input;
-
 
 const Article = () => {
   const [articles, setArticles] = React.useState([]);  
@@ -62,16 +59,11 @@ const Article = () => {
         
         <Row gutter={[16,16]} style={{marginLeft:"15px"}}>
           {
-            articles && filteredArticles.map(({id, title, imageurl, links})=> (
+            articles && filteredArticles.map(({id, title, imageurl})=> (
             <Col key={id}>                                          
              <Card title={title} style={{width: 300}}
                    cover={<img alt="example" src={imageurl} />} hoverable
-                   actions={[
-                    <PostIcon type="like" countLink={links.likes} id={id} />,
-                    <Displaycomment    msgLink={links.msg} id={id}/>,
-                    <PostIcon type="heart" FavLink={links.fav} id={id}/>
-                  
-                  ]} 
+                   
                    >               
                   <Link to= {`/${id}`}>Details</Link>
                  

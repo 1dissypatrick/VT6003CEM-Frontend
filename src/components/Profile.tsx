@@ -1,220 +1,52 @@
-import 'antd/dist/reset.css';
-import React from "react";
-import { getCurrentUser } from "../services/auth.service";
-import SearchUser from './userSearch'
-import ImageUpload from './ImageUpload'
-import { NavigateFunction, useNavigate } from 'react-router-dom';
-import axios from "axios";
-import { api } from './common/http-common';
-import { Form, Input, Button,Row, Col, Space } from 'antd';
-import { Avatar} from 'antd';
-import {  DeleteOutlined, UserOutlined } from '@ant-design/icons';
-import EditForm from "./EditForm";
-import UserT from "../types/user.type";
+// src/components/Profile.tsx
+import React, { useState } from 'react';
+import { Form, Input, Button, Upload, message, Avatar } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
+import { updateProfilePhoto, getCurrentUser } from '../services/auth.service';
 
-
-const { TextArea } = Input;
 const Profile: React.FC = () => {
-const currentUser = getCurrentUser();
-const navigate: NavigateFunction = useNavigate();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const currentUser = getCurrentUser();
 
-const formItemLayout = {
-  labelCol: {
-    xs: { span: 24 },
-    sm: { span: 8 },
-   
-  },
-  wrapperCol: {
-    xs: { span: 24 },
-    sm: { span: 16 },
-  
-  },
- };
-  
- let ava:any 
- let ab:any 
-  
- if(currentUser.avatarurl!== undefined &&currentUser.avatarurl!==null)
-  ava=currentUser.avatarurl
- else
-   ava= " avatarurl "
-    
-console.log("avatarurl " + ava)
-   
- 
-
-if(currentUser.about!== undefined &&currentUser.about!==null)
-  ab=currentUser.about
- else
-   ab= " about me "
-    
-console.log("about " + ab)
- 
- const initialValues: UserT = {
-  username: currentUser.username,
-  email: currentUser.email,
-  password:"",
-  avatarurl:ava,
-  about: ab,  
-  role:   currentUser.role,
-  actiCode: "" 
-};
-
-
-
-const handleDelete = () => {
- if (window.confirm("Are you sure to delete your user account? ")) { 
-axios.delete(`${api.uri}/users/${currentUser.id}`, {
-     
-      headers: {
-          "Authorization": `Basic ${localStorage.getItem('aToken')}`
-        }
-      }        
-  )
-    .then((results) =>{ console.log('respone ',JSON.stringify(results.data ))
-      if(results.data )
-    {  
-        alert( `All   records for user with id ${currentUser.id} are removed the Hotel Agent` )
-        localStorage.removeItem("user");
-        navigate("/");
-        window.location.reload();
-      }
-      
-    })
-    .catch((err) => {
-    console.log(`Check network problems pls. `+err);
-       alert("Check network problems");
-})      
-}
-}
-
-const handleFormSubmit  = (values: UserT) => {
-
-      let str = values.about  
-      const upDateUser = {
-      username: values.username,
-      email: values.email,
-      password:values.password,
-      avatarurl:values.avatarurl,
-      about:str.replace(/[&\/\\#,+()$~%.`'":*?<>{}]/g,'_'),
-      
-       
-    }
-    console.log(` password:  ${currentUser.password}`)
-   console.log(`path: ${api.uri}/users/${currentUser.id}`)
-   console.log(`upDateUser: ${JSON.stringify(upDateUser)}`)
-    axios.put(`${api.uri}/users/${currentUser.id}`, upDateUser, {
-        headers: {
-          'Authorization': `Basic ${localStorage.getItem('aToken')}`
-        }
-      })
-        .then((res)=> {
-        alert("User updated..pls login again to refresh data")
-        console.log(res.data);
-        localStorage.removeItem("user");
-         navigate("/");
-        window.location.reload();
-       });
+  if (!currentUser) {
+    return <p>Please login to view your profile.</p>;
   }
-   
- 
 
-console.log('current user' + JSON.stringify(currentUser))
+  const handleSubmit = async (values: { avatarurl: string }) => {
+    setLoading(true);
+    try {
+      await updateProfilePhoto(values.avatarurl);
+      message.success('Profile photo updated!');
+    } catch (error: any) {
+      message.error('Failed to update photo: ' + (error.message || 'Please try again.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <>
-     <p></p>
-     <div style={{marginRight:"15px",marginBottom:"15px"}}>
-      <h2 style={{color:"#135200"}}>
-          <strong>{currentUser.username}</strong> Profile
-      </h2>
-      <Form  { ...formItemLayout}  style={{ maxWidth: 720 }}  initialValues={initialValues} onFinish={(values)=>handleFormSubmit(values)}>
-      <Form.Item name="username" label="Username" >
-      <Input placeholder={currentUser.username} />
-      </Form.Item>
-      <Form.Item name="email" label="email"  rules={[
-                     {type: 'email',
-                       message: 'The input is not valid E-mail!',
-                     },
-                     {required: false,
-                       message: 'Please input your E-mail!',
-                     },
-                   ]} >
-      <Input   placeholder={currentUser.email} />      
-      </Form.Item>
-      <Form.Item name="password" label="New password" rules={[
-                     {
-                       required: false,
-                       message: 'Please input your new password!',
-                     },
-                   ]}
-                   hasFeedback  >
-      <Input.Password   placeholder="Enter New Password"  />      
-      </Form.Item >
-      <Form.Item name="confirm" label="Confirm new password"  dependencies={['password']}
-                   hasFeedback
-                   rules={[
-                     {
-                       required: false,
-                       message: 'Please confirm your password!',
-                     },
-                     ({ getFieldValue }) => ({
-                       validator(_, value) {
-                         if (!value || getFieldValue('password') === value) {
-                           return Promise.resolve();
-                         }
-                         return Promise.reject(new Error('The new password that you entered do not match!'));
-                       },
-                     }),
-                   ]} >
-      <Input.Password    placeholder="Confirm Password" />      
-      </Form.Item>
-      <Form.Item name="about" label="About me" >
-      <TextArea rows={2} placeholder={ab} />
-      </Form.Item>
-      <Form.Item name="avatarurl" label="Avatarurl" >
-      <TextArea rows={2} placeholder={ava} />
-      </Form.Item>
-      <Form.Item  name="avatar " label="Avatar" >
-      <Space style={{display: 'flex', justifyContent:'flex-center'}} size={16} wrap> 
-      {ava.indexOf('http') >= 0 ?  (<Avatar src={ava} />) : (<Avatar  icon={<UserOutlined />} />)
-      }
-      </Space>  
-      </Form.Item>
-      <Form.Item name="role" label="Role"  >
-      <Input disabled  placeholder={currentUser.role} />      
-      </Form.Item>
-      <Form.Item wrapperCol={{ offset: 5, span: 10 }}>
-      <Button type="primary" htmlType="submit">Submit Changes</Button>
-      {currentUser.role!== "admin"&& < DeleteOutlined  style ={{fontSize:"32px",color:"red"  }} onClick={()=>handleDelete()}/>} 
-      </Form.Item> 
-      </Form>          
-      </div>
-      <Row >  
-      <Col span={18}>
-      <div style={{marginLeft:"15px",marginBottom:"15px"}}>
-      { currentUser.role=="admin"&& <SearchUser authbasic={ `${currentUser.atoken}`}/>}
-      </div></Col>
-      </Row>
-      <Row>
-      <Col span={18}>
-        <div style={{marginLeft:"15px",marginBottom:"15px"}}>
-        <ImageUpload />
-      </div>
-      </Col></Row>
-      <Row>
-      <Col span={18}>
-        
-        <div style={{marginLeft:"15px",marginBottom:"15px"}}>
-        {currentUser.role=="admin"&&  <EditForm  isNew={true} />} {currentUser.role=="admin"?  (<h3> Create New Hotel info </h3>):(<br/>)}</div>
-      </Col>    
-      </Row>
-        
-      
-     
-      
-            </>
-  )
-
+    <div style={{ padding: 24, maxWidth: 400, margin: '0 auto' }}>
+      <h3>Profile</h3>
+      <Avatar
+        size={100}
+        src={currentUser.avatarurl}
+        style={{ backgroundColor: '#87d068', marginBottom: 16 }}
+      >
+        {currentUser.username.charAt(0).toUpperCase()}
+      </Avatar>
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form.Item name="avatarurl" label="Profile Photo URL" rules={[{ required: true, message: 'Please enter a photo URL!' }]}>
+          <Input placeholder="https://example.com/photo.jpg" />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading} block>
+            Update Photo
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
 };
 
 export default Profile;
