@@ -60,20 +60,21 @@ const HotelManagement: React.FC = () => {
     }
   }, []);
 
-  const handleAdd = () => {
-    setEditingHotel(null);
-    setAvailability([]);
-    form.resetFields();
-    setIsModalVisible(true);
-  };
-
   const handleEdit = (hotel: HotelT) => {
     setEditingHotel(hotel);
     setAvailability(hotel.availability || []);
     form.setFieldsValue({
       ...hotel,
+      amenities: hotel.amenities?.join(', ') || '',
       availability: undefined,
     });
+    setIsModalVisible(true);
+  };
+
+  const handleAdd = async () => {
+    setEditingHotel(null);
+    setAvailability([]);
+    form.resetFields();
     setIsModalVisible(true);
   };
 
@@ -91,12 +92,17 @@ const HotelManagement: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
+      const amenitiesArray = typeof values.amenities === 'string'
+        ? values.amenities.split(',').map((a: string) => a.trim()).filter(Boolean)
+        : Array.isArray(values.amenities)
+        ? values.amenities.filter(Boolean)
+        : [];
       const hotelData: Partial<HotelT> = {
         name: values.name,
         location: values.location,
         price: values.price,
         availability: availability,
-        amenities: values.amenities?.split(',').map((a: string) => a.trim()).filter(Boolean) || [],
+        amenities: amenitiesArray,
         imageUrl: values.imageUrl || undefined,
         description: values.description || '',
         rating: values.rating || undefined,
