@@ -1,13 +1,11 @@
-// src/components/HotelList.tsx
 import React, { useState, useEffect } from 'react';
-import { Card, List, Input, Select, Button, Row, Col, message } from 'antd';
+import { Card, List, Input, Button, Row, Col, message } from 'antd';
 import { getHotels, addFavorite } from '../services/auth.service';
-import { HotelT } from '../types/user.type.ts';
+import { HotelT } from '../types/user.type';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/auth.service';
 
 const { Search } = Input;
-const { Option } = Select;
 
 const HotelList: React.FC = () => {
   const [hotels, setHotels] = useState<HotelT[]>([]);
@@ -23,7 +21,7 @@ const HotelList: React.FC = () => {
       const data = await getHotels(search, filters);
       setHotels(data);
     } catch (error: any) {
-      message.error('Failed to load hotels: ' + (error.message || 'Please try again.'));
+      message.error('Failed to load hotels: ' + (error.response?.data?.error || error.message || 'Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -43,8 +41,13 @@ const HotelList: React.FC = () => {
       await addFavorite(hotelId);
       message.success('Hotel added to favorites!');
     } catch (error: any) {
-      message.error('Failed to add favorite: ' + (error.message || 'Please try again.'));
+      message.error('Failed to add favorite: ' + (error.response?.data?.error || 'Please try again.'));
     }
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilters({});
   };
 
   return (
@@ -54,6 +57,8 @@ const HotelList: React.FC = () => {
         <Col span={8}>
           <Search
             placeholder="Search by hotel name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             onSearch={(value) => setSearch(value)}
             enterButton
           />
@@ -61,22 +66,28 @@ const HotelList: React.FC = () => {
         <Col span={4}>
           <Input
             placeholder="Location"
-            onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+            value={filters.location || ''}
+            onChange={(e) => setFilters({ ...filters, location: e.target.value || undefined })}
           />
         </Col>
         <Col span={4}>
           <Input
             type="number"
             placeholder="Min Price"
-            onChange={(e) => setFilters({ ...filters, minPrice: parseInt(e.target.value) })}
+            value={filters.minPrice || ''}
+            onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? parseInt(e.target.value) : undefined })}
           />
         </Col>
         <Col span={4}>
           <Input
             type="number"
             placeholder="Max Price"
-            onChange={(e) => setFilters({ ...filters, maxPrice: parseInt(e.target.value) })}
+            value={filters.maxPrice || ''}
+            onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? parseInt(e.target.value) : undefined })}
           />
+        </Col>
+        <Col span={4}>
+          <Button onClick={clearFilters}>Clear Filters</Button>
         </Col>
       </Row>
       <List
@@ -95,7 +106,7 @@ const HotelList: React.FC = () => {
             >
               <Card.Meta
                 title={hotel.name}
-                description={`$${hotel.pricePerNight}/night - ${hotel.location}`}
+                description={`$${hotel.price}/night - ${hotel.location}`}
               />
             </Card>
           </List.Item>

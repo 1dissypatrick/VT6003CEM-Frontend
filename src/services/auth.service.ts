@@ -63,9 +63,17 @@ export const getAllUsers = async (limit: number = 20, page: number = 1): Promise
   return Array.isArray(response.data) ? response.data : [];
 };
 
-export const getHotels = async (): Promise<HotelT[]> => {
+export const getHotels = async (
+  search: string = '',
+  filters: { location?: string; minPrice?: number; maxPrice?: number } = {}
+): Promise<HotelT[]> => {
   const token = localStorage.getItem('token');
-  const response = await axios.get(`${API_URL}/hotels`, {
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.append('search', search);
+  if (filters.location) queryParams.append('location', filters.location);
+  if (filters.minPrice !== undefined) queryParams.append('minPrice', filters.minPrice.toString());
+  if (filters.maxPrice !== undefined) queryParams.append('maxPrice', filters.maxPrice.toString());
+  const response = await axios.get(`${API_URL}/hotels?${queryParams.toString()}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   console.log('getHotels: Response data:', response.data);
