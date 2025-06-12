@@ -1,11 +1,10 @@
-// src/types/user.type.ts
 export interface UserT {
   id?: number;
   username: string;
   password?: string;
   email: string;
   role: 'operator' | 'user';
-  avatarurl?: string;
+  avatarUrl?: string; // Changed to camelCase
   signupCode?: string;
   token?: string;
 }
@@ -14,21 +13,25 @@ export interface RegisterUserT {
   username: string;
   email: string;
   password: string;
-  signupCode: string;
+  signupCode?: string; // Made optional
+  role: 'operator' | 'user'; // Added
 }
 
 export interface HotelT {
   id?: number;
   name: string;
   location: string;
-  pricePerNight: number;
+  price: number;
   availability: { date: string; roomsAvailable: number }[];
   amenities: string[];
   imageUrl?: string;
-  createdBy: number; // Operator ID
+  description?: string;
+  rating?: number;
+  createdBy?: number;
 }
 
 export interface FavoriteT {
+  id?: number; // Added for consistency
   userId: number;
   hotelId: number;
   hotelName: string;
