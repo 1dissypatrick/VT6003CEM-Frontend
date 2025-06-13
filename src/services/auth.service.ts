@@ -1,7 +1,11 @@
-import axios from 'axios';
+import axios, { CancelTokenSource } from 'axios';
 import { UserT, RegisterUserT, HotelT, FavoriteT, MessageT } from '../types/user.type';
 
 const API_URL = 'http://localhost:10888/api/v1';
+
+// Cache for getCurrentUser
+let cachedUser: UserT | undefined = undefined;
+let lastUserStr: string | null = null;
 
 export const register = async (
   username: string,
@@ -28,6 +32,15 @@ export const login = async (username: string, password: string): Promise<UserT> 
   if (response.data.token) {
     localStorage.setItem('user', JSON.stringify(response.data));
     localStorage.setItem('token', response.data.token);
+    // Refresh cachedUser on login
+    lastUserStr = JSON.stringify(response.data);
+    cachedUser = {
+      id: response.data.id,
+      username: response.data.username,
+      email: response.data.email,
+      role: response.data.role,
+      avatarUrl: response.data.avatarurl || response.data.avatarUrl,
+    };
   }
   return response.data;
 };
@@ -35,24 +48,33 @@ export const login = async (username: string, password: string): Promise<UserT> 
 export const logout = (): void => {
   localStorage.removeItem('user');
   localStorage.removeItem('token');
+  cachedUser = undefined;
+  lastUserStr = null;
 };
 
 export const getCurrentUser = (): UserT | undefined => {
   const userStr = localStorage.getItem('user');
+  if (userStr === lastUserStr) {
+    return cachedUser;
+  }
+  lastUserStr = userStr;
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
-      return {
+      cachedUser = {
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
         avatarUrl: user.avatarurl || user.avatarUrl,
       };
+      return cachedUser;
     } catch {
+      cachedUser = undefined;
       return undefined;
     }
   }
+  cachedUser = undefined;
   return undefined;
 };
 
@@ -144,6 +166,9 @@ export const updateProfilePhoto = async (avatarUrl: string): Promise<UserT> => {
     email: response.data.email || user.email || 'N/A',
   };
   localStorage.setItem('user', JSON.stringify(updatedUser));
+  // Update cache
+  lastUserStr = JSON.stringify(updatedUser);
+  cachedUser = updatedUser;
   return updatedUser;
 };
 
@@ -160,7 +185,7 @@ export const addFavorite = async (hotelId: number): Promise<FavoriteT> => {
   return response.data;
 };
 
-export const getFavorites = async (): Promise<FavoriteT[]> => {
+export const getFavorites = async (cancelToken?: CancelTokenSource): Promise<FavoriteT[]> => {
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Not authenticated');
@@ -169,6 +194,7 @@ export const getFavorites = async (): Promise<FavoriteT[]> => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    cancelToken: cancelToken?.token,
   });
   return Array.isArray(response.data) ? response.data : [];
 };
