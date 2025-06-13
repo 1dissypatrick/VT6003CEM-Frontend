@@ -1,8 +1,7 @@
-// src/components/Messages.tsx
 import React, { useState, useEffect } from 'react';
 import { List, Button, Input, message, Form } from 'antd';
 import { getMessages, respondToMessage, deleteMessage } from '../services/auth.service';
-import { MessageT } from '../types/user.type.ts';
+import { MessageT } from '../types/user.type';
 import { getCurrentUser } from '../services/auth.service';
 
 const { TextArea } = Input;
@@ -19,7 +18,7 @@ const Messages: React.FC = () => {
       const data = await getMessages();
       setMessages(data);
     } catch (error: any) {
-      message.error('Failed to load messages: ' + (error.message || 'Please try again.'));
+      message.error(`Failed to load messages: ${error.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
     }
@@ -29,7 +28,7 @@ const Messages: React.FC = () => {
     if (currentUser) {
       fetchMessages();
     }
-  }, []);
+  }, [currentUser]);
 
   const handleReply = async (messageId: number, values: { response: string }) => {
     try {
@@ -38,7 +37,7 @@ const Messages: React.FC = () => {
       fetchMessages();
       form.resetFields();
     } catch (error: any) {
-      message.error('Failed to send response: ' + (error.message || 'Please try again.'));
+      message.error(`Failed to send response: ${error.message || 'Please try again.'}`);
     }
   };
 
@@ -48,7 +47,7 @@ const Messages: React.FC = () => {
       message.success('Message deleted!');
       fetchMessages();
     } catch (error: any) {
-      message.error('Failed to delete message: ' + (error.message || 'Please try again.'));
+      message.error(`Failed to delete message: ${error.message || 'Please try again.'}`);
     }
   };
 
@@ -65,36 +64,51 @@ const Messages: React.FC = () => {
         renderItem={(item) => (
           <List.Item
             actions={
-              currentUser.role === 'operator'
+              currentUser.role === 'operator' && item.id
                 ? [
-                    <Form form={form} onFinish={(values) => handleReply(item.id!, values)}>
-                      <Form.Item name="response" rules={[{ required: true, message: 'Please enter a response!' }]}>
+                    <Form
+                      form={form}
+                      key={`form-${item.id}`}
+                      onFinish={(values) => handleReply(item.id!, values)}
+                    >
+                      <Form.Item
+                        name="response"
+                        rules={[{ required: true, message: 'Please enter a response!' }]}
+                      >
                         <TextArea rows={2} placeholder="Type your response" />
                       </Form.Item>
                       <Button type="primary" htmlType="submit">
                         Reply
                       </Button>
                     </Form>,
-                    <Button danger onClick={() => handleDelete(item.id!)}>
+                    <Button danger onClick={() => handleDelete(item.id!)} key={`delete-${item.id}`}>
                       Delete
                     </Button>,
                   ]
-                : []}
+                : []
+            }
           >
             <List.Item.Meta
-              title={`From User ID ${item.senderId} about Hotel ${item.hotelId}`}
+              title={`From User ID ${item.senderId} about Hotel ${item.hotelId || 'N/A'}`}
               description={
                 <>
                   <p>{item.content}</p>
-                  {item.response && <p><strong>Response:</strong> {item.response}</p>}
+                  {item.response && (
+                    <p>
+                      <strong>Response:</strong> {item.response}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Sent:</strong> {item.sentAt || 'Unknown'}
+                  </p>
                 </>
               }
             />
-        </List.Item>
-      )}
-    />
-  </div>
-);
+          </List.Item>
+        )}
+      />
+    </div>
+  );
 };
 
 export default Messages;
