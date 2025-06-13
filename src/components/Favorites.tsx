@@ -1,8 +1,7 @@
-// src/components/Favorites.tsx
 import React, { useState, useEffect } from 'react';
 import { List, Button, message } from 'antd';
 import { getFavorites, removeFavorite } from '../services/auth.service';
-import { FavoriteT } from '../types/user.type.ts';
+import { FavoriteT } from '../types/user.type';
 import { getCurrentUser } from '../services/auth.service';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,11 +12,13 @@ const Favorites: React.FC = () => {
   const navigate = useNavigate();
 
   const fetchFavorites = async () => {
-    setLoading(true);
+    
     try {
       const data = await getFavorites();
+      console.log('fetchFavorites: Received favorites:', data);
       setFavorites(data);
     } catch (error: any) {
+      console.error('fetchFavorites: Error:', error);
       message.error('Failed to load favorites: ' + (error.message || 'Please try again.'));
     } finally {
       setLoading(false);
@@ -28,14 +29,31 @@ const Favorites: React.FC = () => {
     if (currentUser) {
       fetchFavorites();
     }
-  }, []);
+  }, [currentUser]);
 
-  const handleRemove = async (hotelId: number) => {
+  const handleView = (hotelId: number | undefined) => {
+    if (!hotelId || isNaN(hotelId)) {
+      console.error('handleView: Invalid hotelId:', hotelId);
+      message.error('Cannot view hotel: Invalid hotel ID');
+      return;
+    }
+    console.log('handleView: Navigating to /hotel/', hotelId);
+    navigate(`/hotel/${hotelId}`);
+  };
+
+  const handleRemove = async (hotelId: number | undefined) => {
+    if (!hotelId || isNaN(hotelId)) {
+      console.error('handleRemove: Invalid hotelId:', hotelId);
+      message.error('Cannot remove favorite: Invalid hotel ID');
+      return;
+    }
     try {
+      console.log('handleRemove: Removing favorite with hotelId:', hotelId);
       await removeFavorite(hotelId);
       message.success('Hotel removed from favorites!');
-      fetchFavorites();
+      await fetchFavorites();
     } catch (error: any) {
+      console.error('handleRemove: Error:', error);
       message.error('Failed to remove favorite: ' + (error.message || 'Please try again.'));
     }
   };
@@ -53,13 +71,13 @@ const Favorites: React.FC = () => {
         renderItem={(item) => (
           <List.Item
             actions={[
-              <Button onClick={() => navigate(`/hotel/${item.hotelId}`)}>View</Button>,
+              <Button onClick={() => handleView(item.hotelId)}>View</Button>,
               <Button danger onClick={() => handleRemove(item.hotelId)}>
                 Remove
               </Button>,
             ]}
           >
-            {item.hotelName}
+            {item.hotelName || 'Unnamed Hotel'}
           </List.Item>
         )}
       />
