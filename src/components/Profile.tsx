@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Upload, message, Avatar, Descriptions, UploadFile } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { updateProfilePhoto, getCurrentUser } from '../services/auth.service';
@@ -7,16 +7,27 @@ const Profile: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const currentUser = getCurrentUser();
+  const [user, setUser] = useState(getCurrentUser());
 
-  if (!currentUser) {
+  useEffect(() => {
+    const fetchUser = async () => {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  if (!user) {
     return <p>Please login to view your profile.</p>;
   }
 
   // Normalize avatarurl to avatarUrl
   const normalizedUser = {
-    ...currentUser,
-    avatarUrl: (currentUser as any).avatarurl || currentUser.avatarUrl,
+    ...user,
+    avatarUrl: (user as any).avatarurl || user.avatarUrl || 'https://via.placeholder.com/150',
+    email: user.email || 'N/A',
   };
 
   const handleUpload = async (file: File): Promise<string> => {
@@ -41,6 +52,10 @@ const Profile: React.FC = () => {
         return;
       }
       await updateProfilePhoto(avatarUrl);
+      const updatedUser = await getCurrentUser();
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
       message.success('Profile photo updated!');
       form.resetFields();
       setFileList([]);
@@ -80,7 +95,23 @@ const Profile: React.FC = () => {
         <Form.Item
           name="avatarUrl"
           label="Profile Photo URL (Optional)"
-          rules={[{ type: 'url', message: 'Please enter a valid URL!', when: (values) => !fileList.length }]}
+          rules={[
+            {
+              validator: async (_, value: string) => {
+                if (!value && fileList.length === 0) {
+                  return Promise.reject(new Error('Please provide a photo URL or upload a file.'));
+                }
+                if (value && !fileList.length) {
+                  try {
+                    new URL(value);
+                  } catch {
+                    return Promise.reject(new Error('Please enter a valid URL!'));
+                  }
+                }
+                return Promise.resolve();
+              },
+            },
+          ]}
         >
           <Input placeholder="https://example.com/photo.jpg" disabled={fileList.length > 0} />
         </Form.Item>

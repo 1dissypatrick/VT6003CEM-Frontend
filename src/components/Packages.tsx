@@ -41,7 +41,7 @@ const Packages: React.FC = () => {
           <List.Item>
             <Card
               title={`${hotel.name} + Flight to ${mockFlights[0].destination}`}
-              extra={<span>${hotel.pricePerNight + mockFlights[0].price}</span>}
+              extra={<span>${hotel.price + mockFlights[0].price}</span>}
             >
               <p>Hotel: {hotel.location}</p>
               <p>Flight: {mockFlights[0].destination}</p>

@@ -13,7 +13,7 @@ export interface RegisterUserT {
   username: string;
   email: string;
   password: string;
-  signupCode?: string; // Made optional
+  signupCode: string; // Made optional
   role: 'operator' | 'user'; // Added
 }
 

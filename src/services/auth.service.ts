@@ -38,11 +38,17 @@ export const logout = (): void => {
 };
 
 export const getCurrentUser = (): UserT | undefined => {
-  const token = localStorage.getItem('token');
-  if (token) {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return { id: payload.id, username: payload.username, role: payload.role, email: payload.email };
+      const user = JSON.parse(userStr);
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatarurl || user.avatarUrl,
+      };
     } catch {
       return undefined;
     }
@@ -60,7 +66,10 @@ export const getAllUsers = async (limit: number = 20, page: number = 1): Promise
       Authorization: `Bearer ${token}`,
     },
   });
-  return Array.isArray(response.data) ? response.data : [];
+  return Array.isArray(response.data) ? response.data.map((user: any) => ({
+    ...user,
+    avatarUrl: user.avatarurl || user.avatarUrl,
+  })) : [];
 };
 
 export const getHotels = async (
@@ -124,13 +133,18 @@ export const updateProfilePhoto = async (avatarUrl: string): Promise<UserT> => {
   if (!user || !user.id || !localStorage.getItem('token')) {
     throw new Error('Not authenticated');
   }
-  const response = await axios.patch(`${API_URL}/users/${user.id}`, { avatarUrl }, {
+  const response = await axios.patch(`${API_URL}/users/${user.id}`, { avatarurl: avatarUrl }, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,
     },
   });
-  localStorage.setItem('user', JSON.stringify({ ...user, avatarUrl }));
-  return response.data;
+  const updatedUser = {
+    ...user,
+    avatarUrl,
+    email: response.data.email || user.email || 'N/A',
+  };
+  localStorage.setItem('user', JSON.stringify(updatedUser));
+  return updatedUser;
 };
 
 export const addFavorite = async (hotelId: number): Promise<FavoriteT> => {
