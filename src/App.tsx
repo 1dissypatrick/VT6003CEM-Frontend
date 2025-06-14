@@ -76,8 +76,8 @@ const App: React.FC = () => {
             {currentUser ? (
               <Space size="large">
                 <Link to="/profile">
-                  {currentUser.avatarurl && currentUser.avatarurl.includes('http') ? (
-                    <Avatar size="large" src={currentUser.avatarurl} />
+                  {currentUser.avatarUrl && currentUser.avatarUrl.includes('http') ? (
+                    <Avatar size="large" src={currentUser.avatarUrl} />
                   ) : (
                     <Avatar size="large" style={{ backgroundColor: '#87d068' }}>
                       {currentUser.username.charAt(0).toUpperCase()}

@@ -1,26 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { List, Button, Input, message, Form } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Layout, List, Button, Input, message, Form, Typography, Avatar, Card } from 'antd';
 import { getMessages, respondToMessage, deleteMessage } from '../services/auth.service';
 import { MessageT } from '../types/user.type';
 import { getCurrentUser } from '../services/auth.service';
+import { UserOutlined } from '@ant-design/icons';
 
+const { Sider, Content } = Layout;
 const { TextArea } = Input;
+const { Text, Title } = Typography;
+
+interface Conversation {
+  key: string;
+  title: string;
+  latestMessage: string;
+  latestSentAt: string;
+  messages: MessageT[];
+}
 
 const Messages: React.FC = () => {
   const [messages, setMessages] = useState<MessageT[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversationKey, setSelectedConversationKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null); // New state for selected message
   const currentUser = getCurrentUser();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const fetchMessages = async () => {
     setLoading(true);
     try {
       const data = await getMessages();
       setMessages(data);
+      groupMessages(data);
     } catch (error: any) {
       message.error(`Failed to load messages: ${error.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const groupMessages = (data: MessageT[]) => {
+    const isOperator = currentUser?.role === 'operator';
+    const grouped = data.reduce((acc, msg) => {
+      const key = isOperator
+        ? `user-${msg.senderId}`
+        : `hotel-${msg.hotelId || 'no-hotel'}`;
+      const title = isOperator
+        ? `User ${msg.senderId}`
+        : msg.hotelId
+        ? `Hotel ${msg.hotelId}`
+        : 'General Inquiry';
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          title,
+          latestMessage: msg.content || msg.response || '',
+          latestSentAt: msg.sentAt || '',
+          messages: [],
+        };
+      }
+      acc[key].messages.push(msg);
+      if (new Date(msg.sentAt) > new Date(acc[key].latestSentAt)) {
+        acc[key].latestMessage = msg.content || msg.response || '';
+        acc[key].latestSentAt = msg.sentAt || '';
+      }
+      return acc;
+    }, {} as Record<string, Conversation>);
+
+    const sortedConvs = Object.values(grouped).sort((a, b) =>
+      new Date(b.latestSentAt).getTime() - new Date(a.latestSentAt).getTime()
+    );
+    setConversations(sortedConvs);
+    if (sortedConvs.length > 0 && !selectedConversationKey) {
+      setSelectedConversationKey(sortedConvs[0].key);
     }
   };
 
@@ -30,12 +87,28 @@ const Messages: React.FC = () => {
     }
   }, [currentUser]);
 
-  const handleReply = async (messageId: number, values: { response: string }) => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [selectedConversationKey, messages]);
+
+  const handleReply = async (values: { response: string }) => {
+    if (!selectedConversationKey) return;
+    const selectedConv = conversations.find((conv) => conv.key === selectedConversationKey);
+    if (!selectedConv) {
+      message.error('No conversation selected.');
+      return;
+    }
+    const messageIdToRespond = selectedMessageId || (selectedConv.messages[0]?.id || null);
+    if (!messageIdToRespond) {
+      message.error('No message selected to respond to.');
+      return;
+    }
     try {
-      await respondToMessage(messageId, values.response);
+      await respondToMessage(messageIdToRespond, values.response);
       message.success('Response sent!');
       fetchMessages();
       form.resetFields();
+      setSelectedMessageId(null); // Reset selected message after sending
     } catch (error: any) {
       message.error(`Failed to send response: ${error.message || 'Please try again.'}`);
     }
@@ -51,63 +124,143 @@ const Messages: React.FC = () => {
     }
   };
 
+  const handleMessageSelect = (messageId: number | undefined) => {
+    if (messageId !== undefined) {
+      setSelectedMessageId(messageId === selectedMessageId ? null : messageId); // Toggle selection
+    }
+  };
+
   if (!currentUser) {
-    return <p>Please login to view messages.</p>;
+    return <p style={{ fontSize: 18, padding: 24, textAlign: 'left' }}>Please login to view messages.</p>;
   }
 
+  const selectedConversation = conversations.find(
+    (conv) => conv.key === selectedConversationKey
+  );
+
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Messages</h2>
-      <List
-        dataSource={messages}
-        loading={loading}
-        renderItem={(item) => (
-          <List.Item
-            actions={
-              currentUser.role === 'operator' && item.id
-                ? [
-                    <Form
-                      form={form}
-                      key={`form-${item.id}`}
-                      onFinish={(values) => handleReply(item.id!, values)}
-                    >
-                      <Form.Item
-                        name="response"
-                        rules={[{ required: true, message: 'Please enter a response!' }]}
+    <Layout style={{ height: 'calc(100vh - 104px)', padding: 0, width: '1200px', maxWidth: '1200px', textAlign: 'left' }}>
+      <Sider width={300} style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}>
+        <Title level={4} style={{ padding: 16 }}>Conversations</Title>
+        <List
+          dataSource={conversations}
+          loading={loading}
+          renderItem={(conv) => (
+            <List.Item
+              onClick={() => setSelectedConversationKey(conv.key)}
+              style={{
+                cursor: 'pointer',
+                background: conv.key === selectedConversationKey ? '#e6f7ff' : '#fff',
+                padding: '12px 16px',
+                borderBottom: '1px solid #f0f0f0',
+              }}
+            >
+              <List.Item.Meta
+                avatar={<Avatar icon={<UserOutlined />} />}
+                title={conv.title}
+                description={
+                  <Text ellipsis style={{ color: '#999', fontSize: 14 }}>
+                    {conv.latestMessage.length > 30
+                      ? `${conv.latestMessage.slice(0, 30)}...`
+                      : conv.latestMessage}
+                  </Text>
+                }
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {new Date(conv.latestSentAt).toLocaleTimeString()}
+              </Text>
+            </List.Item>
+          )}
+        />
+      </Sider>
+      <Content style={{ padding: 48, background: '#f5f5f5', overflowY: 'auto', width: 'calc(100vw - 300px)', maxWidth: 'calc(100vw - 300px)', textAlign: 'left' }}>
+        {selectedConversation ? (
+          <>
+            <Title level={4} style={{ marginBottom: 16 }}>{selectedConversation.title}</Title>
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginBottom: 24,
+                padding: 48,
+                background: '#fff',
+                borderRadius: 8,
+                minHeight: '60vh',
+                width: '100%',
+                maxWidth: '100%',
+              }}
+            >
+              {selectedConversation.messages.map((msg) => {
+                const isSentByCurrentUser = msg.senderId === currentUser.id;
+                return (
+                  <Card
+                    key={msg.id}
+                    onClick={() => currentUser?.role === 'operator' && msg.id !== undefined && handleMessageSelect(msg.id)} // Safe click handler
+                    style={{
+                      marginBottom: 16,
+                      maxWidth: '98%',
+                      minWidth: '500px',
+                      marginLeft: isSentByCurrentUser ? 'auto' : 0,
+                      marginRight: isSentByCurrentUser ? 16 : 'auto',
+                      background: selectedMessageId === msg.id ? '#f0f0f0' : (isSentByCurrentUser ? '#e6f7ff' : '#fff'), // Highlight selected message
+                      borderColor: isSentByCurrentUser ? '#91d5ff' : '#d9d9d9',
+                      borderRadius: 12,
+                      cursor: currentUser?.role === 'operator' ? 'pointer' : 'default',
+                    }}
+                    bodyStyle={{ padding: 20 }}
+                  >
+                    <Text style={{ fontSize: 18, lineHeight: 1.5 }}>{msg.content}</Text>
+                    {msg.response && (
+                      <Text
+                        style={{ display: 'block', marginTop: 12, color: '#666', fontSize: 18, lineHeight: 1.5 }}
                       >
-                        <TextArea rows={2} placeholder="Type your response" />
-                      </Form.Item>
-                      <Button type="primary" htmlType="submit">
-                        Reply
+                        <strong>Response:</strong> {msg.response}
+                      </Text>
+                    )}
+                    <Text
+                      type="secondary"
+                      style={{ display: 'block', marginTop: 8, fontSize: 16 }}
+                    >
+                      {new Date(msg.sentAt || '').toLocaleString()}
+                    </Text>
+                    {currentUser.role === 'operator' && msg.id && (
+                      <Button
+                        danger
+                        size="small"
+                        onClick={() => msg.id && handleDelete(msg.id)} // Add type guard
+                        style={{ marginTop: 12 }}
+                      >
+                        Delete
                       </Button>
-                    </Form>,
-                    <Button danger onClick={() => handleDelete(item.id!)} key={`delete-${item.id}`}>
-                      Delete
-                    </Button>,
-                  ]
-                : []
-            }
-          >
-            <List.Item.Meta
-              title={`From User ID ${item.senderId} about Hotel ${item.hotelId || 'N/A'}`}
-              description={
-                <>
-                  <p>{item.content}</p>
-                  {item.response && (
-                    <p>
-                      <strong>Response:</strong> {item.response}
-                    </p>
-                  )}
-                  <p>
-                    <strong>Sent:</strong> {item.sentAt || 'Unknown'}
-                  </p>
-                </>
-              }
-            />
-          </List.Item>
+                    )}
+                  </Card>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+            {currentUser.role === 'operator' && (
+              <Form form={form} onFinish={handleReply} style={{ maxWidth: '98%', minWidth: '500px' }}>
+                <Form.Item
+                  name="response"
+                  rules={[{ required: true, message: 'Please enter a response!' }]}
+                >
+                  <TextArea rows={3} placeholder="Type your response" style={{ fontSize: 18 }} />
+                </Form.Item>
+                <Form.Item>
+                  <Button type="primary" htmlType="submit" disabled={!selectedMessageId}>
+                    Send
+                  </Button>
+                </Form.Item>
+              </Form>
+            )}
+          </>
+        ) : (
+          <Text style={{ fontSize: 18, padding: 24, textAlign: 'left' }}>
+            Select a conversation to view messages.
+          </Text>
         )}
-      />
-    </div>
+      </Content>
+    </Layout>
   );
 };
 
