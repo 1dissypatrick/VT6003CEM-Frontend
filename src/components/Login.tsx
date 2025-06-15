@@ -1,9 +1,11 @@
-// src/components/Login.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { login } from '../services/auth.service';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode'; // Changed to named import
 
 interface LoginValues {
   username: string;
@@ -23,6 +25,31 @@ const Login: React.FC = () => {
     } catch (error: any) {
       message.error(`Login failed: ${error?.response?.data?.error || 'Please try again.'}`);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error('No credential received from Google');
+      }
+      const idToken = credentialResponse.credential;
+      const decodedToken: { email: string; name: string } = jwtDecode(idToken); // Use jwtDecode
+      const username = decodedToken.name.replace(/\s+/g, '_').toLowerCase();
+      const response = await axios.post('http://localhost:10888/api/v1/users/oauth/google', {
+        idToken,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      message.success(`Welcome back, ${response.data.username}!`);
+      window.location.reload();
+      navigate('/');
+    } catch (error: any) {
+      message.error(`Google login failed: ${error.response?.data?.error || 'Please try again.'}`);
+    }
+  };
+
+  const handleGoogleError = () => {
+    message.error('Google login failed.');
   };
 
   return (
@@ -49,6 +76,13 @@ const Login: React.FC = () => {
           <Button type="primary" htmlType="submit" block>
             Login
           </Button>
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+            />
+          </div>
         </Form.Item>
       </Form>
     </div>

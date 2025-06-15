@@ -4,6 +4,9 @@ import { Form, Input, Button, message, Radio } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { register } from '../services/auth.service';
 import { RegisterUserT } from '../types/user.type';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +15,7 @@ const Register: React.FC = () => {
   const handleRegister = async (values: RegisterUserT) => {
     const { username, email, password, signupCode } = values;
     try {
-      await register(username, email, password, signupCode, role);
+      await register(username, email, password, signupCode || '', role);
       message.success(`Welcome ${username}! Please login to access your account.`);
       navigate('/login');
     } catch (error: any) {
@@ -20,6 +23,30 @@ const Register: React.FC = () => {
         `Registration failed for ${username}! ${error.response?.data?.error || 'Please try again.'}`
       );
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error('No credential received from Google');
+      }
+      const idToken = credentialResponse.credential;
+      const decodedToken: { email: string; name: string } = jwtDecode(idToken);
+      const username = decodedToken.name.replace(/\s+/g, '_').toLowerCase();
+      const response = await axios.post('http://localhost:10888/api/v1/users/oauth/google', {
+        idToken,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      message.success(`Welcome ${response.data.username}!`);
+      window.location.href = '/';
+    } catch (error: any) {
+      message.error(`Google registration failed: ${error.response?.data?.error || 'Please try again.'}`);
+    }
+  };
+
+  const handleGoogleError = () => {
+    message.error('Google registration failed.');
   };
 
   return (
@@ -132,6 +159,15 @@ const Register: React.FC = () => {
           >
             Register
           </Button>
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            {role === 'user' && (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap
+              />
+            )}
+          </div>
         </Form.Item>
       </Form>
     </div>
