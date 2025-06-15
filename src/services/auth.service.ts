@@ -30,19 +30,24 @@ export const login = async (username: string, password: string): Promise<UserT> 
     password,
   });
   if (response.data.token) {
-    localStorage.setItem('user', JSON.stringify(response.data));
+    // Normalize user object to always include avatarUrl (camelCase)
+    const normalizedUser: UserT = {
+      ...response.data,
+      avatarUrl: response.data.avatarurl || response.data.avatarUrl || undefined,
+    };
+    const userData = JSON.stringify(normalizedUser);
+    localStorage.setItem('user', userData);
     localStorage.setItem('token', response.data.token);
     // Refresh cachedUser on login
-    lastUserStr = JSON.stringify(response.data);
-    cachedUser = {
-      id: response.data.id,
-      username: response.data.username,
-      email: response.data.email,
-      role: response.data.role,
-      avatarUrl: response.data.avatarurl || response.data.avatarUrl,
-    };
+    lastUserStr = userData;
+    cachedUser = normalizedUser;
+    console.log('Login raw userData:', userData); // Debug raw data
+    console.log('Login cachedUser:', cachedUser); // Debug cached object
   }
-  return response.data;
+  return {
+    ...response.data,
+    avatarUrl: response.data.avatarurl || response.data.avatarUrl || undefined,
+  };
 };
 
 export const logout = (): void => {
@@ -54,7 +59,9 @@ export const logout = (): void => {
 
 export const getCurrentUser = (): UserT | undefined => {
   const userStr = localStorage.getItem('user');
+  console.log('getCurrentUser raw userStr:', userStr); // Debug raw localStorage data
   if (userStr === lastUserStr) {
+    console.log('getCurrentUser using cache:', cachedUser);
     return cachedUser;
   }
   lastUserStr = userStr;
@@ -62,14 +69,13 @@ export const getCurrentUser = (): UserT | undefined => {
     try {
       const user = JSON.parse(userStr);
       cachedUser = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatarurl || user.avatarUrl,
+        ...user, // Spread all fields
+        avatarUrl: user.avatarurl || user.avatarUrl || undefined,
       };
+      console.log('getCurrentUser parsed:', cachedUser); // Debug parsed object
       return cachedUser;
-    } catch {
+    } catch (e) {
+      console.error('Error parsing user from localStorage:', e);
       cachedUser = undefined;
       return undefined;
     }
@@ -90,7 +96,7 @@ export const getAllUsers = async (limit: number = 20, page: number = 1): Promise
   });
   return Array.isArray(response.data) ? response.data.map((user: any) => ({
     ...user,
-    avatarUrl: user.avatarurl || user.avatarUrl,
+    avatarUrl: user.avatarurl || user.avatarUrl || undefined,
   })) : [];
 };
 
@@ -155,7 +161,7 @@ export const updateProfilePhoto = async (avatarUrl: string): Promise<UserT> => {
   if (!user || !user.id || !localStorage.getItem('token')) {
     throw new Error('Not authenticated');
   }
-  const response = await axios.patch(`${API_URL}/users/${user.id}`, { avatarurl: avatarUrl }, {
+  const response = await axios.patch(`${API_URL}/users/${user.id}`, { avatarurl: avatarUrl }, { // Changed to avatarurl
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,
     },
@@ -169,6 +175,7 @@ export const updateProfilePhoto = async (avatarUrl: string): Promise<UserT> => {
   // Update cache
   lastUserStr = JSON.stringify(updatedUser);
   cachedUser = updatedUser;
+  console.log('updateProfilePhoto updatedUser:', updatedUser); // Debug log
   return updatedUser;
 };
 

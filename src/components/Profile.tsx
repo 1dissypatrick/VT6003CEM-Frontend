@@ -1,38 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Upload, message, Avatar, Descriptions, UploadFile } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Form, Input, Button, message, Avatar, Descriptions, UploadFile } from 'antd';
+
+import { UserT } from '../types/user.type';
 import { updateProfilePhoto, getCurrentUser } from '../services/auth.service';
 
 const Profile: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [user, setUser] = useState(getCurrentUser());
+  const [user, setUser] = useState<UserT | null>(null); // Explicitly type as UserT or null
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const currentUser = await getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-      }
-    };
-    fetchUser();
+    const currentUser = getCurrentUser();
+    console.log('Profile useEffect currentUser:', currentUser); // Debug log with context
+    if (currentUser) {
+      setUser(currentUser);
+    } else {
+      console.warn('No current user found in Profile useEffect');
+    }
   }, []);
 
   if (!user) {
     return <p>Please login to view your profile.</p>;
   }
 
-  // Normalize avatarurl to avatarUrl
+  // Normalize avatarUrl and email
   const normalizedUser = {
     ...user,
-    avatarUrl: (user as any).avatarurl || user.avatarUrl || 'https://via.placeholder.com/150',
+    avatarUrl: user.avatarUrl || 'https://via.placeholder.com/150', // Use avatarUrl directly
     email: user.email || 'N/A',
   };
 
   const handleUpload = async (file: File): Promise<string> => {
-    // Mock upload to a storage service (replace with actual service like AWS S3 or Cloudinary)
-    // For demo, convert file to base64
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
@@ -51,11 +50,8 @@ const Profile: React.FC = () => {
         message.error('Please provide a photo URL or upload a file.');
         return;
       }
-      await updateProfilePhoto(avatarUrl);
-      const updatedUser = await getCurrentUser();
-      if (updatedUser) {
-        setUser(updatedUser);
-      }
+      const updatedUser = await updateProfilePhoto(avatarUrl);
+      setUser(updatedUser); // Update state with the new user data
       message.success('Profile photo updated!');
       form.resetFields();
       setFileList([]);
@@ -64,17 +60,6 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const uploadProps = {
-    onRemove: () => {
-      setFileList([]);
-    },
-    beforeUpload: (file: UploadFile) => {
-      setFileList([file]);
-      return false; // Prevent auto-upload
-    },
-    fileList,
   };
 
   return (
@@ -89,7 +74,7 @@ const Profile: React.FC = () => {
       </Avatar>
       <Descriptions title="User Information" column={1} style={{ marginBottom: 24 }}>
         <Descriptions.Item label="Username">{normalizedUser.username}</Descriptions.Item>
-        <Descriptions.Item label="Email">{normalizedUser.email}</Descriptions.Item>
+        
       </Descriptions>
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item
@@ -115,11 +100,7 @@ const Profile: React.FC = () => {
         >
           <Input placeholder="https://example.com/photo.jpg" disabled={fileList.length > 0} />
         </Form.Item>
-        <Form.Item label="Upload Profile Photo">
-          <Upload {...uploadProps} accept="image/*">
-            <Button icon={<UploadOutlined />}>Select Photo</Button>
-          </Upload>
-        </Form.Item>
+        
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading} block>
             Update Photo

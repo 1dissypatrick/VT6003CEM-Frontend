@@ -1,8 +1,7 @@
-// src/App.tsx
 import 'antd/dist/reset.css';
 import { Layout, Space, Avatar, FloatButton } from 'antd';
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { getCurrentUser, logout } from './services/auth.service';
 import { UserT } from './types/user.type';
 import Login from './components/Login';
@@ -22,7 +21,7 @@ import { LogoutOutlined, HomeOutlined, DashboardOutlined, InfoCircleOutlined, He
 import Copyright from './components/Copyright';
 import './App.css';
 
-const { Header, Content, Footer } = Layout; // Added Footer
+const { Header, Content, Footer } = Layout;
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserT | undefined>(undefined);
@@ -53,11 +52,9 @@ const App: React.FC = () => {
                   style={{ height: 40 }}
                 />
               </Link>
-              <Link to="/">
-                <HomeOutlined style={{ fontSize: 24 }} />
-              </Link>
+              
               <Link to="/hotels">
-                <SearchOutlined style={{ fontSize: 24 }} />
+                <HomeOutlined style={{ fontSize: 24 }} />
               </Link>
               <Link to="/dashboard">
                 <DashboardOutlined style={{ fontSize: 24 }} />
@@ -70,6 +67,9 @@ const App: React.FC = () => {
                   <AppstoreOutlined style={{ fontSize: 24 }} />
                 </Link>
               )}
+              <Link to="/Home">
+                <SearchOutlined style={{ fontSize: 24 }} />
+              </Link>
             </Space>
           </nav>
           <nav>
@@ -92,7 +92,7 @@ const App: React.FC = () => {
                 </Link>
                 <a onClick={handleLogout} style={{ cursor: 'pointer' }}>
                   <LogoutOutlined style={{ fontSize: 24 }} />
-                </a> {/* Fixed closing tag */}
+                </a>
               </Space>
             ) : (
               <Space size="large">
@@ -104,7 +104,7 @@ const App: React.FC = () => {
         </Header>
         <Content style={{ padding: '24px', background: '#f0f2f5' }}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Navigate to="/hotels" />} /> {/* Redirect root to /hotels */}
             <Route path="/hotels" element={<HotelList />} />
             <Route path="/hotel/:id" element={<HotelDetails />} />
             <Route path="/hotel-management" element={<HotelManagement />} />
@@ -114,6 +114,7 @@ const App: React.FC = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/Home" element={<Home />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/packages" element={<Packages />} />
