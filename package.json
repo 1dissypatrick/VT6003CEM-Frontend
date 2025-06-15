@@ -23,6 +23,7 @@
   "dependencies": {
     "@ant-design/compatible": "^5.1.2",
     "@ant-design/icons": "^5.0.1",
+    "@react-oauth/google": "^0.12.2",
     "@types/node": "^18.15.12",
     "@vitejs/plugin-react-swc": "^3.8.1",
     "antd": "^5.3.3",
