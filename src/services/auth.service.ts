@@ -161,7 +161,7 @@ export const updateProfilePhoto = async (avatarUrl: string): Promise<UserT> => {
   if (!user || !user.id || !localStorage.getItem('token')) {
     throw new Error('Not authenticated');
   }
-  const response = await axios.patch(`${API_URL}/users/${user.id}`, { avatarurl: avatarUrl }, { // Changed to avatarurl
+  const response = await axios.put(`${API_URL}/users/${user.id}`, { avatarurl: avatarUrl }, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,
     },

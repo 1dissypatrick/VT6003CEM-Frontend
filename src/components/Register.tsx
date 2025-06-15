@@ -34,7 +34,7 @@ const Register: React.FC = () => {
       const decodedToken: { email: string; name: string } = jwtDecode(idToken);
       const username = decodedToken.name.replace(/\s+/g, '_').toLowerCase();
       const response = await axios.post('http://localhost:10888/api/v1/users/oauth/google', {
-        idToken,
+        code: idToken,
       }, {
         headers: { 'Content-Type': 'application/json' },
       });

@@ -74,7 +74,7 @@ const Profile: React.FC = () => {
       </Avatar>
       <Descriptions title="User Information" column={1} style={{ marginBottom: 24 }}>
         <Descriptions.Item label="Username">{normalizedUser.username}</Descriptions.Item>
-        
+        <Descriptions.Item label="Email">{normalizedUser.email}</Descriptions.Item>
       </Descriptions>
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item
